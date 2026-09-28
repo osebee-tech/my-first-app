@@ -1,0 +1,9 @@
+{
+  "name": "자산노트",
+  "short_name": "자산노트",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f5f7",
+  "theme_color": "#f8f9fa",
+  "lang": "ko"
+}
