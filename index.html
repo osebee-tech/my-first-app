@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>자산노트</title>
+<style>
+:root{
+  --paper:#EFEEE8; --ink:#1C1B18; --ink-soft:#5B584F; --line:#D8D5C9;
+  --save:#3F5A44; --spend:#7A4B3A; --accent:#8B7355; --card:#F7F6F1;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#171613; --ink:#EDEAE0; --ink-soft:#A6A296; --line:#332F27;
+    --save:#7FB08A; --spend:#C98A6E; --accent:#B79B75; --card:#1E1C18;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#171613; --ink:#EDEAE0; --ink-soft:#A6A296; --line:#332F27;
+  --save:#7FB08A; --spend:#C98A6E; --accent:#B79B75; --card:#1E1C18;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Noto Serif KR", Georgia, serif;
+  font-feature-settings:"tnum" 1;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-variant-numeric:tabular-nums;}
+#app{max-width:520px; margin:0 auto; padding:0 18px 100px; min-height:100%;}
+header.top{
+  padding:22px 0 10px; position:sticky; top:env(safe-area-inset-top,0px);
+  background:var(--paper); z-index:5; border-bottom:1px solid var(--line);
+}
+header.top h1{font-size:17px; font-weight:600; margin:0; letter-spacing:.02em;}
+.view{display:none; padding-top:18px;}
+.view.active{display:block;}
+
+/* HOME */
+.year-label{font-size:13px; color:var(--ink-soft); margin-bottom:2px;}
+.total-amt{font-size:30px; font-weight:700; line-height:1.15; letter-spacing:-.01em; margin-bottom:18px;}
+.stat-row{display:flex; gap:10px; margin-bottom:18px;}
+.stat-box{flex:1; border:1px solid var(--line); border-radius:5px; padding:13px 14px; background:var(--card); min-width:0;}
+.stat-label{font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
+.stat-val{font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.stat-val.pos{color:var(--save);} .stat-val.neg{color:var(--spend);}
+.empty-note{color:var(--ink-soft); font-size:14px; padding:30px 0; line-height:1.6;}
+
+.home-intro{margin:18px 0 12px;}
+.home-title{font-size:14px;color:var(--ink-soft);margin-bottom:8px;}
+.home-cta{width:100%;margin:0 0 22px;padding:15px 16px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:6px;font:inherit;font-weight:700;font-size:15px;}
+.year-block{margin-top:26px;}
+.year-heading{display:flex;align-items:baseline;justify-content:space-between;padding:0 2px 9px;border-bottom:2px solid var(--ink);}
+.year-title{font-size:18px;font-weight:700;}
+.year-save{font-size:14px;font-weight:700;}
+.year-save.pos{color:var(--save)} .year-save.neg{color:var(--spend)}
+.year-note{font-size:11px;color:var(--ink-soft);margin:7px 2px 10px;}
+.segment{border-top:1px solid var(--line); padding:16px 0; cursor:pointer;}
+.segment:last-child{border-bottom:1px solid var(--line);}
+.seg-row{display:flex; justify-content:space-between; align-items:baseline;}
+.seg-month{font-size:14px; color:var(--ink-soft); font-weight:500;}
+.seg-days{font-size:11px;}
+.seg-range{font-size:12px; color:var(--ink-soft); margin-top:3px;}
+.seg-total{font-size:16px; font-weight:600;}
+.seg-delta{font-size:21px; font-weight:700; margin-top:5px; letter-spacing:-.01em;}
+.seg-delta.pos{color:var(--save);}
+.seg-delta.neg{color:var(--spend);}
+.seg-delta.muted{font-size:14px; font-weight:500; color:var(--ink-soft);}
+.rec-delta.pos{color:var(--save); font-weight:600;}
+.rec-delta.neg{color:var(--spend); font-weight:600;}
+.rec-delta.muted{color:var(--ink-soft);}
+.tag.progress{color:var(--accent); border:1px solid var(--accent); padding:1px 7px; border-radius:2px; font-size:11px; margin-left:4px;}
+.seg-detail{margin-top:10px; padding-left:2px; display:none;}
+.segment.open .seg-detail{display:block;}
+.rec-row{display:flex; justify-content:space-between; padding:7px 0; font-size:13px; border-top:1px dashed var(--line);}
+.rec-row .rec-date{color:var(--ink-soft);}
+.rec-del{background:none; border:1px solid var(--line); color:var(--ink-soft); border-radius:3px; font-size:12px; padding:1px 7px; margin-left:8px;}
+.edit-banner{font-size:13px; color:var(--accent); border:1px solid var(--line); border-radius:3px; padding:8px 12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;}
+.rec-list-title{font-size:13px; color:var(--ink-soft); margin:34px 0 8px; padding-top:14px; border-top:1px solid var(--line);}
+.saved-rec{border-bottom:1px dashed var(--line); padding-bottom:8px; margin-bottom:6px;}
+.hint{font-size:12px; color:var(--ink-soft); line-height:1.5; margin-top:14px;}
+.rec-memo{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+.rec-breakdown{font-size:12px; color:var(--ink-soft); margin-top:2px; line-height:1.5;}
+
+/* FORM */
+.field{margin-bottom:16px;}
+.field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px;}
+input[type=text],input[type=date],textarea{
+  width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:3px;
+  background:var(--card); color:var(--ink); font-family:inherit; font-size:15px;
+}
+input[type=text]{text-align:right;}
+textarea{resize:vertical; min-height:54px; text-align:left;}
+.asset-row{border:1px solid var(--line); border-radius:4px; padding:12px 14px; margin-bottom:10px; background:var(--card);}
+.asset-row .name-line{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.asset-row .name-line strong{font-size:14px; font-weight:600;}
+.asset-row.composite .name-line{cursor:pointer;}
+.chev{color:var(--ink-soft); font-size:12px;}
+.sub-list{display:none; padding-top:6px; border-top:1px dashed var(--line); margin-top:6px;}
+.sub-list.open{display:block;}
+.sub-item-row{display:flex; align-items:center; gap:8px; margin-top:8px;}
+.sub-item-row input[type=text]{flex:1;}
+.sub-item-row .sname{width:96px; font-size:13px; color:var(--ink-soft); flex-shrink:0;}
+.composite-sum{font-size:12px; color:var(--ink-soft); margin-top:6px; text-align:right;}
+button{font-family:inherit; cursor:pointer;}
+.btn-primary{
+  width:100%; padding:14px; background:var(--ink); color:var(--paper);
+  border:none; border-radius:4px; font-size:15px; font-weight:600; margin-top:8px;
+}
+.btn-ghost{
+  width:100%; padding:12px; background:transparent; color:var(--ink-soft);
+  border:1px dashed var(--line); border-radius:4px; font-size:13px; margin-bottom:18px;
+}
+.btn-link{background:none; border:none; color:var(--accent); font-size:13px; padding:4px 0;}
+
+/* ASSETS */
+.asset-manage-row{display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--line); padding:13px 0;}
+.asset-manage-row:last-of-type{border-bottom:1px solid var(--line);}
+.am-name{font-size:14px;}
+.am-name.inactive{color:var(--ink-soft); text-decoration:line-through;}
+.am-val{font-size:13px; color:var(--ink-soft); margin-top:2px;}
+.am-actions{display:flex; gap:10px;}
+.am-actions button{background:none; border:none; font-size:12px; color:var(--ink-soft); text-decoration:underline; padding:2px;}
+.am-actions button.moveAssetBtn, .am-actions button.moveSubBtn{text-decoration:none; font-size:13px; padding:2px 4px;}
+.am-actions button:disabled{opacity:.25;}
+.sub-manage{padding-left:14px; border-left:2px solid var(--line); margin:6px 0 4px 4px;}
+
+/* NAV */
+nav.bottom{
+  position:fixed; left:0; right:0; bottom:0; background:var(--paper);
+  border-top:1px solid var(--line); display:flex; z-index:10;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+nav.bottom button{
+  flex:1; background:none; border:none; padding:13px 0 11px; font-size:13px;
+  color:var(--ink-soft); font-family:inherit;
+}
+nav.bottom button.active{color:var(--ink); font-weight:600; border-top:2px solid var(--ink); margin-top:-1px;}
+
+/* MODAL */
+.overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+  align-items:flex-end; justify-content:center; z-index:50;
+}
+.overlay.show{display:flex;}
+.modal{
+  background:var(--paper); width:100%; max-width:520px; border-radius:14px 14px 0 0;
+  padding:26px 22px calc(22px + env(safe-area-inset-bottom,0px));
+}
+.modal p{font-size:15px; line-height:1.6; margin:0 0 18px;}
+.modal .mbtns{display:flex; flex-direction:column; gap:8px;}
+.modal button{padding:13px; border-radius:4px; font-size:14px; border:1px solid var(--line); background:var(--card); color:var(--ink);}
+.modal button.primary{background:var(--ink); color:var(--paper); border:none;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top"><h1>자산노트</h1></header>
+
+  <div class="view active" id="view-home"></div>
+  <div class="view" id="view-new"></div>
+  <div class="view" id="view-assets"></div>
+</div>
+
+<nav class="bottom">
+  <button data-view="home" class="active">홈</button>
+  <button data-view="new">새 기록</button>
+  <button data-view="assets">자산관리</button>
+</nav>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<script>
+/* ---------- storage ---------- */
+const LS_A='an_assets', LS_S='an_snapshots';
+function loadAssets(){ try{return JSON.parse(localStorage.getItem(LS_A))||[];}catch(e){return [];} }
+function loadSnaps(){ try{return JSON.parse(localStorage.getItem(LS_S))||[];}catch(e){return [];} }
+function saveAssets(a){ localStorage.setItem(LS_A, JSON.stringify(a)); }
+function saveSnaps(s){ localStorage.setItem(LS_S, JSON.stringify(s)); }
+let assets = loadAssets();
+let snaps = loadSnaps();
+let _uidCounter=0;
+function uid(){ return Date.now().toString(36)+'_'+(_uidCounter++).toString(36)+'_'+Math.random().toString(36).slice(2,7); }
+function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function fmt(n){ if(n===undefined||n===null||isNaN(n)) return '0'; return Math.round(n).toLocaleString('ko-KR'); }
+function parseNum(s){ if(s===''||s===undefined||s===null) return undefined; const v=Number(String(s).replace(/,/g,'')); return isNaN(v)?undefined:v; }
+
+/* ---------- resolved history & calc ---------- */
+function sortedSnaps(){
+  return [...snaps].sort((a,b)=> a.date===b.date ? (a._ord-b._ord) : a.date.localeCompare(b.date));
+}
+snaps.forEach((s,i)=>{ if(s._ord===undefined) s._ord=i; });
+
+function buildHistory(){
+  const ss = sortedSnaps();
+  const resolved = {};      // assetId -> value
+  const resolvedSub = {};   // assetId -> {subId: value}
+  const firstTracked = {};  // assetId -> snapshotId
+  const firstTrackedSub = {}; // assetId -> {subId: snapshotId}
+  const hist = [];
+  for(const snap of ss){
+    for(const asset of assets){
+      if(asset.composite){
+        resolvedSub[asset.id] = resolvedSub[asset.id] || {};
+        firstTrackedSub[asset.id] = firstTrackedSub[asset.id] || {};
+        const se = snap.subEntries && snap.subEntries[asset.id];
+        if(se){
+          for(const subId in se){
+            if(resolvedSub[asset.id][subId]===undefined) firstTrackedSub[asset.id][subId]=snap.id;
+            resolvedSub[asset.id][subId] = se[subId];
+          }
+        }
+      } else {
+        const v = snap.entries && snap.entries[asset.id];
+        if(v!==undefined){
+          if(resolved[asset.id]===undefined) firstTracked[asset.id]=snap.id;
+          resolved[asset.id]=v;
+        }
+      }
+    }
+    let total=0;
+    for(const asset of assets){
+      if(asset.composite){
+        const subs = resolvedSub[asset.id]||{};
+        for(const si of asset.subItems){
+          if(subs[si.id]!==undefined) total+=subs[si.id];
+        }
+      } else if(resolved[asset.id]!==undefined){
+        total += resolved[asset.id];
+      }
+    }
+    hist.push({
+      snap, total,
+      resolved: JSON.parse(JSON.stringify(resolved)),
+      resolvedSub: JSON.parse(JSON.stringify(resolvedSub))
+    });
+  }
+  return { hist, firstTracked, firstTrackedSub };
+}
+
+// raw adjusted delta between two consecutive-in-list history points (excludes first-tracked contributions)
+function rawDelta(h1, h2, firstTracked, firstTrackedSub){
+  let delta=0;
+  for(const asset of assets){
+    if(asset.composite){
+      for(const si of asset.subItems){
+        if(firstTrackedSub[asset.id] && firstTrackedSub[asset.id][si.id]===h2.snap.id) continue;
+        const v1 = (h1.resolvedSub[asset.id]||{})[si.id];
+        const v2 = (h2.resolvedSub[asset.id]||{})[si.id];
+        if(v2===undefined) continue;
+        delta += v2 - (v1===undefined?v2:v1);
+      }
+    } else {
+      if(firstTracked[asset.id]===h2.snap.id) continue;
+      const v1 = h1.resolved[asset.id];
+      const v2 = h2.resolved[asset.id];
+      if(v2===undefined) continue;
+      delta += v2 - (v1===undefined?v2:v1);
+    }
+  }
+  return delta;
+}
+
+// interval result list: [{from,to,raw,isTransfer,adjusted}]
+function buildIntervals(){
+  const {hist, firstTracked, firstTrackedSub} = buildHistory();
+  const intervals=[];
+  for(let i=1;i<hist.length;i++){
+    const raw = rawDelta(hist[i-1], hist[i], firstTracked, firstTrackedSub);
+    const isTransfer = !!(hist[i].snap.transferAmount);
+    intervals.push({from:hist[i-1], to:hist[i], raw, isTransfer, adjusted: isTransfer?0:raw});
+  }
+  return {hist, intervals};
+}
+
+function computeThreshold(intervals){
+  const nonTransfer = intervals.filter(iv=>!iv.isTransfer);
+  const last3 = nonTransfer.slice(-3);
+  if(last3.length===0) return 300000;
+  const avg = last3.reduce((s,iv)=>s+Math.abs(iv.raw),0)/last3.length;
+  return avg*2.5;
+}
+
+/* ---------- 30-day nearest-greedy segmentation ---------- */
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+
+function buildSegments(){
+  const {hist, intervals} = buildIntervals();
+  if(hist.length===0) return [];
+  const segments=[];
+  let boundaryIdx = 0; // index into hist
+  let i = 1;
+  while(i < hist.length){
+    const days = daysBetween(hist[boundaryIdx].snap.date, hist[i].snap.date);
+    if(days > 30){
+      let confirmIdx;
+      if(i===boundaryIdx+1){
+        confirmIdx = i; // only one record and it's already >30 days
+      } else {
+        const prevIdx = i-1; // last one <=30days
+        const prevDays = daysBetween(hist[boundaryIdx].snap.date, hist[prevIdx].snap.date);
+        confirmIdx = (30-prevDays) <= (days-30) ? prevIdx : i;
+      }
+      segments.push(makeSegment(hist, intervals, boundaryIdx, confirmIdx, false));
+      boundaryIdx = confirmIdx;
+      i = boundaryIdx+1;
+    } else {
+      i++;
+    }
+  }
+  if(boundaryIdx < hist.length-1){
+    segments.push(makeSegment(hist, intervals, boundaryIdx, hist.length-1, true));
+  } else if(segments.length===0 && hist.length===1){
+    segments.push(makeSegment(hist, intervals, 0, 0, true));
+  }
+  // 추적 시작점(가장 첫 기록)은 비교할 이전 달이 없으므로, 압축된 첫 구간 안에 숨기지 않고
+  // 별도의 단독 항목으로도 보여준다 (저축/지출 표시는 없음).
+  if(segments.length>0 && segments[0].startIdx===0 && segments[0].endIdx>0){
+    segments.unshift(makeSegment(hist, intervals, 0, 0, false));
+  }
+  return segments;
+}
+
+function makeSegment(hist, intervals, startIdx, endIdx, inProgress){
+  const startSnap = hist[startIdx].snap;
+  const endSnap = hist[endIdx].snap;
+  const inner = intervals.slice(startIdx, endIdx); // intervals strictly inside+ending at endIdx, excluding startIdx->startIdx+1 handled by slice start
+  // intervals array index j corresponds to hist[j] -> hist[j+1]; we want intervals from startIdx..endIdx-1 (each hist[j+1] within (startIdx,endIdx])
+  const segIntervals = intervals.slice(startIdx, endIdx);
+  let sum=0, anyTransfer=false, allTransfer=segIntervals.length>0;
+  for(const iv of segIntervals){
+    sum += iv.adjusted;
+    if(iv.isTransfer) anyTransfer=true; else allTransfer=false;
+  }
+  const label = monthLabelOf(endSnap.date);
+  const spanDays = daysBetween(startSnap.date, endSnap.date);
+  return {
+    startIdx, endIdx, startSnap, endSnap,
+    total: hist[endIdx].total,
+    startTotal: hist[startIdx].total,
+    delta: sum,
+    isSave: sum>=0,
+    neutral: segIntervals.length===0 || allTransfer,
+    inProgress, label, spanDays,
+    records: hist.slice(startIdx, endIdx+1),
+    intervals: segIntervals
+  };
+}
+function monthLabelOf(dateStr){ return (Number(dateStr.slice(5,7)))+'월'; }
+
+/* ---------- generic modal helpers (native prompt/confirm are blocked in this sandbox) ---------- */
+const MODAL_INPUT_STYLE = "width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:3px;background:var(--card);color:var(--ink);font-family:inherit;font-size:15px;margin-bottom:14px;text-align:left;";
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+
+function promptTextModal(title, onSubmit){
+  openModal(`
+    <p>${title}</p>
+    <input type="text" id="promptInput" style="${MODAL_INPUT_STYLE}" placeholder="이름 입력">
+    <div class="mbtns">
+      <button class="primary" id="promptOk">추가</button>
+      <button id="promptCancel">취소</button>
+    </div>
+  `);
+  const inp = document.getElementById('promptInput');
+  inp.focus();
+  const submit = ()=>{
+    const v = inp.value.trim();
+    closeModal();
+    if(v) onSubmit(v);
+  };
+  document.getElementById('promptOk').addEventListener('click', submit);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+  document.getElementById('promptCancel').addEventListener('click', closeModal);
+}
+
+function confirmModal(message, onYes){
+  openModal(`
+    <p>${message}</p>
+    <div class="mbtns">
+      <button class="primary" id="confirmYes">확인</button>
+      <button id="confirmNo">취소</button>
+    </div>
+  `);
+  document.getElementById('confirmYes').addEventListener('click', ()=>{ closeModal(); onYes(); });
+  document.getElementById('confirmNo').addEventListener('click', closeModal);
+}
+
+function addAssetModal(){
+  openModal(`
+    <p>자산 이름을 입력하세요.</p>
+    <input type="text" id="assetNameInput" style="${MODAL_INPUT_STYLE}" placeholder="예: 국민은행, 지역화폐 및 현금">
+    <div class="mbtns">
+      <button class="primary" id="addSimpleBtn">단일 자산으로 추가</button>
+      <button id="addCompositeBtn">복합 자산으로 추가 (하위 항목 여러 개)</button>
+    </div>
+  `);
+  const inp = document.getElementById('assetNameInput');
+  inp.focus();
+  const submit = (composite)=>{
+    const name = inp.value.trim();
+    if(!name) return;
+    closeModal();
+    assets.push({ id:uid(), name, active:true, composite, subItems: composite? [] : undefined });
+    saveAssets(assets);
+    renderAssets();
+  };
+  document.getElementById('addSimpleBtn').addEventListener('click', ()=>submit(false));
+  document.getElementById('addCompositeBtn').addEventListener('click', ()=>submit(true));
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(false); });
+}
+
+/* ---------- view routing ---------- */
+let currentView='home';
+let openSegKey=null; // 열려있는 구간의 endSnap.id (배열 인덱스 대신 안정적인 키 사용)
+function switchView(v){
+  currentView=v;
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  render();
+}
+function requestSwitchView(v){
+  if(currentView==='new' && v!=='new' && typeof isDirty==='function' && isDirty()){
+    openModal(`
+      <p>입력한 내용이 있어요. 나갈까요?</p>
+      <div class="mbtns">
+        <button class="primary" id="leaveKeep">임시저장하고 나가기</button>
+        <button id="leaveDiscard">저장 없이 나가기</button>
+        <button id="leaveCancel">취소 (계속 입력)</button>
+      </div>`);
+    document.getElementById('leaveKeep').addEventListener('click', ()=>{ saveDraft(); closeModal(); switchView(v); });
+    document.getElementById('leaveDiscard').addEventListener('click', ()=>{ try{localStorage.removeItem(LS_D);}catch(e){} closeModal(); switchView(v); });
+    document.getElementById('leaveCancel').addEventListener('click', closeModal);
+    return;
+  }
+  switchView(v);
+}
+document.querySelectorAll('nav.bottom button').forEach(b=>b.addEventListener('click',()=>requestSwitchView(b.dataset.view)));
+
+function render(){
+  if(currentView==='home') renderHome();
+  else if(currentView==='new') renderNew();
+  else if(currentView==='assets') renderAssets();
+}
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  const el = document.getElementById('view-home');
+  const segs = buildSegments();
+  if(segs.length===0){
+    el.innerHTML = `<div class="empty-note">아직 기록이 없어요.<br>"새 기록" 탭에서 자산 잔액을 입력해보세요.</div>`;
+    return;
+  }
+  const year = new Date().getFullYear();
+  const latest = segs[segs.length-1];
+  const {intervals} = buildIntervals();
+  const yearNet = intervals.filter(iv=>!iv.isTransfer && Number(iv.to.snap.date.slice(0,4))===year)
+    .reduce((s,iv)=>s+iv.adjusted,0);
+  let prevYearTotal=null;
+  for(const h of buildHistory().hist){ if(Number(h.snap.date.slice(0,4))<year) prevYearTotal=h.total; }
+  const yearCls = yearNet>=0?'pos':'neg';
+  const yearSign = yearNet>=0?'+':'-';
+  let html = `
+    <div class="home-intro">
+      <div class="home-title">오늘도 한 번 기록해두세요.</div>
+      <button class="home-cta" id="homeRecordBtn">+ 오늘 기록하기</button>
+    </div>
+  `;
+  const years = [...new Set(segs.map(x=>Number(x.endSnap.date.slice(0,4))))].sort((a,b)=>b-a);
+    years.forEach(y=>{
+    const ySegs = segs.filter(x=>Number(x.endSnap.date.slice(0,4))===y).reverse();
+    const yNet = intervals.filter(iv=>!iv.isTransfer && Number(iv.to.snap.date.slice(0,4))===y && Number(iv.from.snap.date.slice(0,4))===y)
+      .reduce((sum,iv)=>sum+iv.adjusted,0);
+    const yCls=yNet>=0?'pos':'neg', ySign=yNet>=0?'+':'-';
+    html += `<div class="year-block">
+      <div class="year-heading"><span class="year-title">${y}년</span><span class="year-save num ${yCls}">올해 누적 ${ySign}${fmt(Math.abs(yNet))}원</span></div>
+      <div class="year-note">한 해의 기록은 여기 남고, 새해 기록은 위에 이어져요.</div>`;
+    ySegs.forEach((s)=>{
+      const isFirst = s.startIdx===0 && s.intervals.length===0;
+      let deltaLine = '';
+      if(isFirst) deltaLine = `<div class="seg-delta muted">첫 기록</div>`;
+      else if(s.neutral) deltaLine = `<div class="seg-delta muted">계좌 이동 ${fmt(Math.abs(s.delta))}원</div>`;
+      else if(s.delta>=0) deltaLine = `<div class="seg-delta pos num">+${fmt(s.delta)}원</div>`;
+      else deltaLine = `<div class="seg-delta neg num">-${fmt(Math.abs(s.delta))}원</div>`;
+      const progressTag = s.inProgress ? `<span class="tag progress">진행중</span>` : '';
+      const daysTag = s.spanDays>45 ? ` · ${s.spanDays}일` : '';
+      const rangeLine = s.records.length>1 ? `<div class="seg-range">${s.startSnap.date.slice(5).replace('-','/')} ${fmt(s.startTotal)}원 → ${s.endSnap.date.slice(5).replace('-','/')} ${fmt(s.total)}원</div>` : '';
+      html += `<div class="segment${openSegKey===s.endSnap.id?' open':''}" data-key="${s.endSnap.id}">
+        <div class="seg-row"><div class="seg-month">${s.label}<span class="seg-days">${daysTag}</span> ${progressTag}</div><div class="seg-total num">${fmt(s.total)}원</div></div>
+        ${rangeLine}${deltaLine}<div class="seg-detail">${renderSegDetail(s)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  el.innerHTML = html;
+  const homeRecordBtn=document.getElementById('homeRecordBtn'); if(homeRecordBtn) homeRecordBtn.addEventListener('click',()=>switchView('new'));
+  el.querySelectorAll('.segment').forEach(seg=>{
+    seg.addEventListener('click', (e)=>{
+      if(e.target.closest('.seg-detail')) return;
+      const key = seg.dataset.key;
+      openSegKey = (openSegKey===key) ? null : key;
+      renderHome();
+    });
+  });
+  el.querySelectorAll('.rec-del').forEach(b=>b.addEventListener('click', e=>{ e.stopPropagation(); deleteRecord(b.dataset.id); }));
+}
+
+function renderSegDetail(s){
+  let html='';
+  for(let i=0;i<s.records.length;i++){
+    const r = s.records[i];
+    html += `<div class="rec-row"><span class="rec-date">${r.snap.date}</span><span class="num">${fmt(r.total)}원 <button class="rec-del" data-id="${r.snap.id}" aria-label="삭제">✕</button></span></div>`;
+    if(r.snap.memo) html += `<div class="rec-memo">${escapeHtml(r.snap.memo)}</div>`;
+    if(i>0){
+      const iv = s.intervals[i-1];
+      if(iv){
+        let t;
+        if(iv.isTransfer){
+          t = `<span class="rec-delta muted">계좌 이동 ${fmt(Math.abs(iv.raw))}원</span>`;
+        } else if(iv.adjusted>=0){
+          t = `<span class="rec-delta pos">+${fmt(iv.adjusted)}원</span>`;
+        } else {
+          t = `<span class="rec-delta neg">-${fmt(Math.abs(iv.adjusted))}원</span>`;
+        }
+        html += `<div class="rec-memo">↳ ${t}</div>`;
+      }
+    }
+  }
+  return html;
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- shared helpers ---------- */
+function breakdownParts(h){
+  const parts=[];
+  assets.forEach(a=>{
+    if(a.composite){
+      let sum=0, any=false;
+      a.subItems.forEach(si=>{ const v=(h.resolvedSub[a.id]||{})[si.id]; if(v!==undefined){ sum+=v; any=true; } });
+      if(any) parts.push(`${escapeHtml(a.name)} ${fmt(sum)}원`);
+    } else {
+      const v=h.resolved[a.id];
+      if(v!==undefined) parts.push(`${escapeHtml(a.name)} ${fmt(v)}원`);
+    }
+  });
+  return parts;
+}
+function infoModal(msg){
+  openModal(`<p>${msg}</p><div class="mbtns"><button class="primary" id="infoOk">확인</button></div>`);
+  document.getElementById('infoOk').addEventListener('click', closeModal);
+}
+function deleteRecord(id){
+  const s=snaps.find(x=>x.id===id); if(!s) return;
+  const h=buildHistory().hist.find(x=>x.snap.id===id);
+  confirmModal(`${s.date} 기록(총액 ${fmt(h?h.total:0)}원)을 삭제할까요?<br>삭제하면 되돌릴 수 없어요.`, ()=>{
+    snaps=snaps.filter(x=>x.id!==id); saveSnaps(snaps);
+    if(editingId===id) resetForm();
+    render();
+  });
+}
+function assetHasRecords(id){
+  return snaps.some(s=>(s.entries&&s.entries[id]!==undefined)||(s.subEntries&&s.subEntries[id]&&Object.keys(s.subEntries[id]).length>0));
+}
+function subHasRecords(aid,sid){
+  return snaps.some(s=>s.subEntries&&s.subEntries[aid]&&s.subEntries[aid][sid]!==undefined);
+}
+function showRaw(raw){ return (raw===undefined||raw==='') ? '' : fmt(Number(raw)); }
+
+/* ---------- NEW RECORD ---------- */
+const LS_D='an_draft';
+let newDate = todayStr();
+let lastDate = newDate;
+let newInputs = {};    // assetId -> raw digits typed
+let newSubInputs = {}; // assetId -> {subId: raw digits}
+let newMemo = '';
+let editingId = null;  // 수정 중인 기록 id
+let openComposite = null;
+
+function isDirty(){
+  if(newMemo.trim()!=='') return true;
+  if(Object.values(newInputs).some(v=>v!=='')) return true;
+  return Object.values(newSubInputs).some(o=>Object.values(o).some(v=>v!==''));
+}
+function saveDraft(){
+  try{
+    if(isDirty()||editingId) localStorage.setItem(LS_D, JSON.stringify({newDate,newInputs,newSubInputs,newMemo,editingId}));
+    else localStorage.removeItem(LS_D);
+  }catch(e){}
+}
+function loadDraft(){
+  try{
+    const d=JSON.parse(localStorage.getItem(LS_D)||'null');
+    if(!d) return;
+    newDate=d.newDate||todayStr(); newInputs=d.newInputs||{}; newSubInputs=d.newSubInputs||{}; newMemo=d.newMemo||'';
+    editingId=(d.editingId && snaps.some(s=>s.id===d.editingId)) ? d.editingId : null;
+    lastDate=newDate;
+  }catch(e){}
+}
+function resetForm(){
+  newInputs={}; newSubInputs={}; newMemo=''; editingId=null; openComposite=null;
+  newDate=todayStr(); lastDate=newDate;
+  try{ localStorage.removeItem(LS_D); }catch(e){}
+}
+loadDraft();
+
+// 선택한 날짜 바로 앞 기록의 상태 (placeholder 기준)
+function baselineHist(){
+  const {hist}=buildHistory();
+  let b=null;
+  for(const h of hist){ if(h.snap.date<newDate && h.snap.id!==editingId) b=h; }
+  return b;
+}
+function lastValueFor(assetId){ const b=baselineHist(); return b? b.resolved[assetId] : undefined; }
+function lastSubValueFor(assetId, subId){
+  const b=baselineHist(); if(!b) return undefined;
+  const s=b.resolvedSub[assetId]; return s? s[subId] : undefined;
+}
+function compositeSum(a){
+  let sum=0;
+  a.subItems.forEach(si=>{
+    const raw=(newSubInputs[a.id]||{})[si.id];
+    const v=(raw!==undefined && raw!=='') ? Number(raw) : lastSubValueFor(a.id, si.id);
+    if(v!==undefined) sum+=v;
+  });
+  return sum;
+}
+function updateCompositeSum(assetId){
+  const a=assets.find(x=>x.id===assetId); if(!a) return;
+  const elSum=document.querySelector(`[data-sum-for="${assetId}"]`);
+  if(elSum) elSum.textContent=`합계 ${fmt(compositeSum(a))}원`;
+}
+
+function loadForEdit(id){
+  const s=snaps.find(x=>x.id===id); if(!s) return;
+  editingId=id; newDate=s.date; lastDate=s.date; newMemo=s.memo||'';
+  newInputs={}; newSubInputs={};
+  for(const k in (s.entries||{})) newInputs[k]=String(s.entries[k]);
+  for(const k in (s.subEntries||{})){ newSubInputs[k]={}; for(const j in s.subEntries[k]) newSubInputs[k][j]=String(s.subEntries[k][j]); }
+  openComposite=null; saveDraft();
+}
+
+function onDateChange(val){
+  if(!val){ renderNew(); return; }
+  const ex=snaps.find(s=>s.date===val && s.id!==editingId);
+  if(ex){
+    const [,m,d]=val.split('-');
+    openModal(`<p>${Number(m)}/${Number(d)}에 이미 기록한 내용이 있어요.<br>불러와서 수정할까요?</p>
+      <div class="mbtns"><button class="primary" id="ldYes">불러와서 수정</button><button id="ldNo">취소</button></div>`);
+    document.getElementById('ldYes').addEventListener('click',()=>{ closeModal(); loadForEdit(ex.id); renderNew(); });
+    document.getElementById('ldNo').addEventListener('click',()=>{ closeModal(); newDate=lastDate; renderNew(); });
+    return;
+  }
+  newDate=val; lastDate=val; saveDraft(); renderNew();
+}
+
+function renderNew(){
+  const el=document.getElementById('view-new');
+  const activeAssets=assets.filter(a=>a.active);
+  const editing=editingId ? snaps.find(s=>s.id===editingId) : null;
+  let html='';
+  if(editing) html+=`<div class="edit-banner"><span>${editing.date} 기록 수정 중</span><button class="btn-link" id="cancelEdit">취소</button></div>`;
+  else if(isDirty()) html+=`<div class="edit-banner"><span>입력 중 · 자동 임시저장됨</span><button class="btn-link" id="clearDraft">지우기</button></div>`;
+  html+=`<div class="section-title">오늘의 자산</div><div class="field"><label>날짜</label><input type="date" id="newDate" value="${newDate}"></div>`;
+  if(activeAssets.length===0) html+=`<div class="empty-note">등록된 자산이 없어요. "자산관리"에서 먼저 자산을 추가해주세요.</div>`;
+  activeAssets.forEach(a=>{
+    if(a.composite){
+      const subActive=a.subItems.filter(s=>s.active);
+      html+=`<div class="asset-row composite" data-id="${a.id}">
+        <div class="name-line composite-toggle" data-id="${a.id}"><strong>${escapeHtml(a.name)}</strong><span class="chev">${openComposite===a.id?'▲':'▼'}</span></div>
+        <div class="composite-sum num" data-sum-for="${a.id}">합계 ${fmt(compositeSum(a))}원</div>
+        <div class="sub-list${openComposite===a.id?' open':''}">
+          ${subActive.map(si=>{
+            const last=lastSubValueFor(a.id, si.id);
+            const raw=(newSubInputs[a.id]||{})[si.id];
+            return `<div class="sub-item-row"><span class="sname">${escapeHtml(si.name)}</span>
+              <input type="text" inputmode="numeric" class="subInput" data-asset="${a.id}" data-sub="${si.id}" placeholder="${last!==undefined?fmt(last):'0'}" value="${showRaw(raw)}"></div>`;
+          }).join('')}
+          <button type="button" class="btn-link addSubBtn" data-asset="${a.id}">+ 하위 항목 추가</button>
+        </div></div>`;
+    } else {
+      const last=lastValueFor(a.id);
+      html+=`<div class="asset-row" data-id="${a.id}"><div class="name-line"><strong>${escapeHtml(a.name)}</strong></div>
+        <input type="text" inputmode="numeric" class="assetInput" data-asset="${a.id}" placeholder="${last!==undefined?fmt(last):'0'}" value="${showRaw(newInputs[a.id])}"></div>`;
+    }
+  });
+  html+=`<div class="field" style="margin-top:16px;"><label>메모 (선택)</label><textarea id="newMemo" placeholder="자유롭게 적어두세요">${escapeHtml(newMemo)}</textarea></div>
+    <button class="btn-primary" id="saveBtn" ${activeAssets.length===0?'disabled':''}>${editing?'수정 저장':'저장'}</button>`;
+
+  const {hist}=buildHistory();
+  html+=`<div class="rec-list-title">기록한 내용</div>`;
+  if(!hist.length) html+=`<div class="hint" style="margin-top:0">아직 기록한 내용이 없어요.</div>`;
+  [...hist].reverse().forEach(h=>{
+    const parts=breakdownParts(h);
+    html+=`<div class="saved-rec"><div class="rec-row" style="border-top:none"><span class="rec-date">${h.snap.date}</span>
+      <span class="num">${fmt(h.total)}원 <button class="rec-del" data-id="${h.snap.id}" aria-label="삭제">✕</button></span></div>
+      ${parts.length?`<div class="rec-breakdown">${parts.join(' · ')}</div>`:''}
+      <button class="btn-link editRecBtn" data-id="${h.snap.id}">수정</button></div>`;
+  });
+  el.innerHTML=html;
+
+  document.getElementById('newDate').addEventListener('change', e=>onDateChange(e.target.value));
+  document.getElementById('newMemo').addEventListener('input', e=>{ newMemo=e.target.value; saveDraft(); });
+  const cancel=()=>{ resetForm(); renderNew(); };
+  const ce=document.getElementById('cancelEdit'); if(ce) ce.addEventListener('click', cancel);
+  const cd=document.getElementById('clearDraft'); if(cd) cd.addEventListener('click', cancel);
+  el.querySelectorAll('.assetInput').forEach(inp=>inp.addEventListener('input', e=>{
+    const raw=e.target.value.replace(/[^\d]/g,'');
+    newInputs[e.target.dataset.asset]=raw;
+    e.target.value=showRaw(raw); saveDraft();
+  }));
+  el.querySelectorAll('.subInput').forEach(inp=>inp.addEventListener('input', e=>{
+    const raw=e.target.value.replace(/[^\d]/g,'');
+    const aid=e.target.dataset.asset, sid=e.target.dataset.sub;
+    newSubInputs[aid]=newSubInputs[aid]||{}; newSubInputs[aid][sid]=raw;
+    e.target.value=showRaw(raw); updateCompositeSum(aid); saveDraft();
+  }));
+  el.querySelectorAll('.composite-toggle').forEach(t=>t.addEventListener('click', ()=>{
+    openComposite=(openComposite===t.dataset.id)?null:t.dataset.id; renderNew();
+  }));
+  el.querySelectorAll('.addSubBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const asset=assets.find(a=>a.id===b.dataset.asset);
+    promptTextModal('하위 항목 이름을 입력하세요', name=>{
+      asset.subItems.push({id:uid(), name, active:true}); saveAssets(assets); renderNew();
+    });
+  }));
+  el.querySelectorAll('.editRecBtn').forEach(b=>b.addEventListener('click', ()=>{ loadForEdit(b.dataset.id); renderNew(); window.scrollTo(0,0); }));
+  el.querySelectorAll('.rec-del').forEach(b=>b.addEventListener('click', ()=>deleteRecord(b.dataset.id)));
+  const saveBtn=document.getElementById('saveBtn');
+  if(saveBtn) saveBtn.addEventListener('click', attemptSave);
+}
+
+function attemptSave(){
+  const entries={}, subEntries={};
+  assets.forEach(a=>{
+    if(a.composite){
+      const raws=newSubInputs[a.id]||{}; const se={};
+      a.subItems.forEach(si=>{ const r=raws[si.id]; if(r!==undefined && r!=='') se[si.id]=Number(r); });
+      if(Object.keys(se).length) subEntries[a.id]=se;
+    } else {
+      const r=newInputs[a.id]; if(r!==undefined && r!=='') entries[a.id]=Number(r);
+    }
+  });
+  const target=editingId ? snaps.find(s=>s.id===editingId) : null;
+  if(!target){
+    const ex=snaps.find(s=>s.date===newDate);
+    if(ex){
+      confirmModal(`${newDate}에 이미 기록이 있어요.<br>입력한 항목만 바꾸고 나머지는 기존 값을 유지할까요?`, ()=>{
+        for(const k in (ex.entries||{})) if(entries[k]===undefined) entries[k]=ex.entries[k];
+        for(const k in (ex.subEntries||{})) subEntries[k]=Object.assign({}, ex.subEntries[k], subEntries[k]||{});
+        proceedSave(ex, entries, subEntries, newMemo.trim()?newMemo:ex.memo);
+      });
+      return;
+    }
+  }
+  proceedSave(target, entries, subEntries, newMemo);
+}
+
+function proceedSave(target, entries, subEntries, memo){
+  const nextOrd=Math.max(-1,...snaps.map(s=>s._ord||0))+1;
+  const candidate={ id:target?target.id:uid(), _ord:target?target._ord:nextOrd, date:newDate, entries, subEntries, memo:memo||'', transferAmount:0 };
+  const backup=snaps;
+  snaps=target ? snaps.map(s=>s.id===candidate.id?candidate:s) : [...snaps,candidate];
+  let intervals;
+  try{ intervals=buildIntervals().intervals; } finally { snaps=backup; }
+  const k=intervals.findIndex(iv=>iv.to.snap.id===candidate.id);
+  if(k<0){ finalizeSave(candidate,0,target); return; }
+  const iv=intervals[k];
+  const threshold=computeThreshold(intervals.slice(0,k));
+  if(iv.raw!==0 && Math.abs(iv.raw)>threshold) showTransferModal(candidate, iv.raw, target);
+  else finalizeSave(candidate,0,target);
+}
+
+function showTransferModal(candidate, rawDeltaVal, target){
+  const isDecrease=rawDeltaVal<0;
+  const amt=fmt(Math.abs(rawDeltaVal));
+  openModal(isDecrease ? `
+    <p>지난 기록보다 총액이 <b class="num">${amt}원</b> 줄었어요.</p>
+    <div class="mbtns"><button class="primary" id="btnN">쓴 돈이에요</button><button id="btnT">다른 곳으로 옮긴 돈이에요</button></div>` : `
+    <p>총액이 <b class="num">${amt}원</b> 늘었어요.</p>
+    <div class="mbtns"><button class="primary" id="btnN">들어온 돈이에요</button><button id="btnT">다른 곳에서 옮겨온 돈이에요</button></div>`);
+  document.getElementById('btnN').addEventListener('click', ()=>{ closeModal(); finalizeSave(candidate,0,target); });
+  document.getElementById('btnT').addEventListener('click', ()=>{ closeModal(); finalizeSave(candidate,rawDeltaVal,target); });
+}
+
+function finalizeSave(candidate, transferAmount, target){
+  candidate.transferAmount=transferAmount;
+  if(target) snaps=snaps.map(s=>s.id===candidate.id?candidate:s); else snaps.push(candidate);
+  saveSnaps(snaps);
+  resetForm();
+  openSegKey=null;
+  switchView('home');
+}
+
+/* ---------- ASSETS ---------- */
+let openAssetSub=null;
+function renderAssets(){
+  const el=document.getElementById('view-assets');
+  let html=`<button class="btn-ghost" id="addAssetBtn" style="margin-top:16px;">+ 자산 추가</button>`;
+  const {hist}=buildHistory();
+  const latest=hist.length? hist[hist.length-1] : null;
+  assets.forEach((a,ai)=>{
+    let curVal;
+    if(a.composite){
+      const subs=latest? (latest.resolvedSub[a.id]||{}) : {};
+      let sum=0; a.subItems.forEach(si=>{ if(subs[si.id]!==undefined) sum+=subs[si.id]; });
+      curVal=fmt(sum)+'원';
+    } else {
+      const v=latest? latest.resolved[a.id] : undefined;
+      curVal=v!==undefined ? fmt(v)+'원' : '미입력';
+    }
+    html+=`<div class="asset-manage-row"><div>
+        <div class="am-name${a.active?'':' inactive'}">${escapeHtml(a.name)}${a.composite?' (복합)':''}${a.active?'':' · 비활성'}</div>
+        <div class="am-val">${curVal}</div></div>
+      <div class="am-actions">
+        <button class="moveAssetBtn" data-id="${a.id}" data-dir="-1" ${ai===0?'disabled':''}>▲</button>
+        <button class="moveAssetBtn" data-id="${a.id}" data-dir="1" ${ai===assets.length-1?'disabled':''}>▼</button>
+        ${a.composite? `<button class="toggleSubBtn" data-id="${a.id}">하위항목</button>`:''}
+        <button class="toggleActiveBtn" data-id="${a.id}">${a.active?'비활성화':'활성화'}</button>
+        <button class="deleteAssetBtn" data-id="${a.id}">삭제</button>
+      </div></div>`;
+    if(a.composite && openAssetSub===a.id){
+      html+=`<div class="sub-manage">`;
+      a.subItems.forEach((si,si_i)=>{
+        html+=`<div class="asset-manage-row" style="padding:8px 0;">
+          <div class="am-name${si.active?'':' inactive'}">${escapeHtml(si.name)}</div>
+          <div class="am-actions">
+            <button class="moveSubBtn" data-asset="${a.id}" data-sub="${si.id}" data-dir="-1" ${si_i===0?'disabled':''}>▲</button>
+            <button class="moveSubBtn" data-asset="${a.id}" data-sub="${si.id}" data-dir="1" ${si_i===a.subItems.length-1?'disabled':''}>▼</button>
+            <button class="toggleSubActiveBtn" data-asset="${a.id}" data-sub="${si.id}">${si.active?'비활성화':'활성화'}</button>
+            <button class="deleteSubBtn" data-asset="${a.id}" data-sub="${si.id}">삭제</button>
+          </div></div>`;
+      });
+      html+=`<button class="btn-link addSubMBtn" data-asset="${a.id}">+ 하위 항목 추가</button></div>`;
+    }
+  });
+  html+=`<div class="hint">비활성화하면 새 기록 입력창에서만 사라지고, 과거 기록과 총액에는 그대로 남아요. 기록이 있는 자산은 삭제할 수 없어요. 계좌를 정리했다면 마지막에 0원을 입력한 뒤 비활성화하세요.</div>`;
+  el.innerHTML=html;
+
+  document.getElementById('addAssetBtn').addEventListener('click', addAssetModal);
+  el.querySelectorAll('.moveAssetBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const i=assets.findIndex(x=>x.id===b.dataset.id); const j=i+Number(b.dataset.dir);
+    if(j<0||j>=assets.length) return;
+    [assets[i],assets[j]]=[assets[j],assets[i]]; saveAssets(assets); renderAssets();
+  }));
+  el.querySelectorAll('.moveSubBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const a=assets.find(x=>x.id===b.dataset.asset);
+    const i=a.subItems.findIndex(x=>x.id===b.dataset.sub); const j=i+Number(b.dataset.dir);
+    if(j<0||j>=a.subItems.length) return;
+    [a.subItems[i],a.subItems[j]]=[a.subItems[j],a.subItems[i]]; saveAssets(assets); renderAssets();
+  }));
+  el.querySelectorAll('.toggleActiveBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const a=assets.find(x=>x.id===b.dataset.id); a.active=!a.active; saveAssets(assets); renderAssets();
+  }));
+  el.querySelectorAll('.deleteAssetBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const id=b.dataset.id;
+    if(assetHasRecords(id)){ infoModal('기록이 있는 자산은 삭제할 수 없어요.<br>"비활성화"를 쓰면 새 기록에서만 숨겨지고 과거 기록은 그대로 남아요.'); return; }
+    confirmModal('이 자산을 완전히 삭제할까요?', ()=>{ assets=assets.filter(x=>x.id!==id); saveAssets(assets); renderAssets(); });
+  }));
+  el.querySelectorAll('.toggleSubBtn').forEach(b=>b.addEventListener('click', ()=>{
+    openAssetSub=openAssetSub===b.dataset.id? null : b.dataset.id; renderAssets();
+  }));
+  el.querySelectorAll('.toggleSubActiveBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const a=assets.find(x=>x.id===b.dataset.asset); const si=a.subItems.find(x=>x.id===b.dataset.sub);
+    si.active=!si.active; saveAssets(assets); renderAssets();
+  }));
+  el.querySelectorAll('.deleteSubBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const aid=b.dataset.asset, sid=b.dataset.sub;
+    if(subHasRecords(aid,sid)){ infoModal('기록이 있는 하위 항목은 삭제할 수 없어요.<br>"비활성화"를 써주세요.'); return; }
+    confirmModal('이 하위 항목을 삭제할까요?', ()=>{
+      const a=assets.find(x=>x.id===aid); a.subItems=a.subItems.filter(x=>x.id!==sid); saveAssets(assets); renderAssets();
+    });
+  }));
+  el.querySelectorAll('.addSubMBtn').forEach(b=>b.addEventListener('click', ()=>{
+    const a=assets.find(x=>x.id===b.dataset.asset);
+    promptTextModal('하위 항목 이름을 입력하세요', name=>{ a.subItems.push({id:uid(), name, active:true}); saveAssets(assets); renderAssets(); });
+  }));
+}
+
+render();
+</script>
+</body>
+</html>
